@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary Analysis Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10141a; --panel:#171d25; --panel2:#1c232c; --border:#2a3340;
+    --text:#eceef1; --muted:#8b95a3; --gold:#cfa435; --gold-dim:#8a712c;
+    --teal:#3fb6a0; --coral:#e2725b; --line:#333e4c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ink); color:var(--text);
+    font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:40px 28px 80px;}
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:16px; padding-bottom:24px; border-bottom:1px solid var(--line);
+    margin-bottom:28px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--gold); margin:0 0 6px;
+  }
+  h1{
+    font-family:'Fraunces',serif; font-weight:500; font-size:34px; margin:0;
+    letter-spacing:-.01em;
+  }
+  header p{color:var(--muted); font-size:13px; margin:8px 0 0; max-width:480px;}
+  .stamp{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+    text-align:right; line-height:1.7;
+  }
+  .stamp b{color:var(--text); font-weight:500;}
+
+  .filters{
+    display:flex; gap:24px; flex-wrap:wrap; align-items:center;
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:14px 20px; margin-bottom:32px;
+  }
+  .filter-group{display:flex; align-items:center; gap:10px;}
+  .filter-group label{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted);
+  }
+  select{
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:6px; padding:6px 10px; font-family:'Inter',sans-serif; font-size:13px;
+  }
+  #resetBtn{
+    margin-left:auto; background:transparent; border:1px solid var(--border);
+    color:var(--muted); font-size:12px; padding:6px 12px; border-radius:6px;
+    cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  #resetBtn:hover{color:var(--text); border-color:var(--gold-dim);}
+
+  .ledger{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:18px 24px; margin-bottom:32px;
+  }
+  .ledger-row{
+    display:flex; align-items:baseline; padding:9px 0; border-bottom:1px dashed var(--line);
+  }
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-label{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .ledger-fill{flex:1; border-bottom:1px dotted var(--line); margin:0 10px 4px;}
+  .ledger-value{
+    font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:500; color:var(--text);
+    white-space:nowrap;
+  }
+  .ledger-value.gold{color:var(--gold);}
+  .ledger-value.coral{color:var(--coral);}
+  .ledger-value.teal{color:var(--teal);}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;}
+  .grid.full{grid-template-columns:1fr;}
+  @media(max-width:820px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px 22px 16px;
+  }
+  .panel h2{
+    font-family:'Fraunces',serif; font-weight:500; font-size:16px; margin:0 0 2px;
+  }
+  .panel .sub{font-size:12px; color:var(--muted); margin:0 0 14px;}
+  .chart-box{position:relative; width:100%;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:0 0 12px; font-size:12px; color:var(--muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+  footer{
+    margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Compensation ledger — 2026</p>
+      <h1>Salary analysis dashboard</h1>
+      <p>A single-file, browser-native view of the cleaned salary dataset — distribution, pay-gap, education and experience drivers, replicated from the EDA notebook.</p>
+    </div>
+    <div class="stamp">
+      Dataset · <b id="stampRows">324</b> records<br>
+      Source · salary_data_cleaned.csv<br>
+      Fields · Age, Gender, Education, Job Title, Experience, Salary
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Gender</label>
+      <select id="fGender">
+        <option value="all">All</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Education</label>
+      <select id="fEdu">
+        <option value="all">All</option>
+        <option value="Bachelor's">Bachelor's</option>
+        <option value="Master's">Master's</option>
+        <option value="PhD">PhD</option>
+      </select>
+    </div>
+    <button id="resetBtn">Reset filters</button>
+  </div>
+
+  <div class="ledger" id="ledger"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Salary distribution</h2>
+      <p class="sub">Employee count across salary bins</p>
+      <div class="chart-box" style="height:260px;">
+        <canvas id="chartHist" role="img" aria-label="Histogram of salary distribution"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Average salary by gender</h2>
+      <p class="sub">Male vs. female, with the pay gap called out</p>
+      <div class="chart-box" style="height:260px;">
+        <canvas id="chartGender" role="img" aria-label="Bar chart comparing average salary by gender"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Average salary by education</h2>
+      <p class="sub">Bachelor's, Master's, PhD</p>
+      <div class="chart-box" style="height:260px;">
+        <canvas id="chartEdu" role="img" aria-label="Bar chart of average salary by education level"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Correlation matrix</h2>
+      <p class="sub">Pearson r across age, experience and salary</p>
+      <div class="chart-box" style="height:260px;">
+        <canvas id="chartCorr" role="img" aria-label="Heatmap of correlation between age, experience and salary"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Experience vs. salary</h2>
+      <p class="sub">Each dot is one employee, colored by gender</p>
+      <div class="legend">
+        <span><i style="background:#3fb6a0"></i>Male</span>
+        <span><i style="background:#e2725b"></i>Female</span>
+      </div>
+      <div class="chart-box" style="height:280px;">
+        <canvas id="chartExpScatter" role="img" aria-label="Scatter plot of years of experience against salary"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Age vs. salary</h2>
+      <p class="sub">Each dot is one employee, colored by gender</p>
+      <div class="legend">
+        <span><i style="background:#3fb6a0"></i>Male</span>
+        <span><i style="background:#e2725b"></i>Female</span>
+      </div>
+      <div class="chart-box" style="height:280px;">
+        <canvas id="chartAgeScatter" role="img" aria-label="Scatter plot of age against salary"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid full">
+    <div class="panel">
+      <h2>Top 15 highest-paying job titles</h2>
+      <p class="sub">Limited to titles with 2 or more records, sorted by average salary</p>
+      <div class="chart-box" style="height:460px;">
+        <canvas id="chartTopJobs" role="img" aria-label="Horizontal bar chart of top 15 highest paying job titles"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Built from eda.ipynb — cleaning, outlier detection (IQR), and grouping logic mirrored 1:1</span>
+    <span id="footCount">324 employees shown</span>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const RAW = [{"age":32,"gender":"Male","edu":"Bachelor's","job":"Software Engineer","exp":5.0,"salary":90000.0},{"age":28,"gender":"Female","edu":"Master's","job":"Data Analyst","exp":3.0,"salary":65000.0},{"age":45,"gender":"Male","edu":"PhD","job":"Senior Manager","exp":15.0,"salary":150000.0},{"age":36,"gender":"Female","edu":"Bachelor's","job":"Sales Associate","exp":7.0,"salary":60000.0},{"age":52,"gender":"Male","edu":"Master's","job":"Director","exp":20.0,"salary":200000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Marketing Analyst","exp":2.0,"salary":55000.0},{"age":42,"gender":"Female","edu":"Master's","job":"Product Manager","exp":12.0,"salary":120000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Sales Manager","exp":4.0,"salary":80000.0},{"age":26,"gender":"Female","edu":"Bachelor's","job":"Marketing Coordinator","exp":1.0,"salary":45000.0},{"age":38,"gender":"Male","edu":"PhD","job":"Senior Scientist","exp":10.0,"salary":110000.0},{"age":29,"gender":"Male","edu":"Master's","job":"Software Developer","exp":3.0,"salary":75000.0},{"age":48,"gender":"Female","edu":"Bachelor's","job":"HR Manager","exp":18.0,"salary":140000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Financial Analyst","exp":6.0,"salary":65000.0},{"age":40,"gender":"Female","edu":"Master's","job":"Project Manager","exp":14.0,"salary":130000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Customer Service Rep","exp":2.0,"salary":40000.0},{"age":44,"gender":"Male","edu":"Bachelor's","job":"Operations Manager","exp":16.0,"salary":125000.0},{"age":33,"gender":"Female","edu":"Master's","job":"Marketing Manager","exp":7.0,"salary":90000.0},{"age":39,"gender":"Male","edu":"PhD","job":"Senior Engineer","exp":12.0,"salary":115000.0},{"age":25,"gender":"Female","edu":"Bachelor's","job":"Data Entry Clerk","exp":0.0,"salary":35000.0},{"age":51,"gender":"Male","edu":"Bachelor's","job":"Sales Director","exp":22.0,"salary":180000.0},{"age":34,"gender":"Female","edu":"Master's","job":"Business Analyst","exp":5.0,"salary":80000.0},{"age":47,"gender":"Male","edu":"Master's","job":"VP of Operations","exp":19.0,"salary":190000.0},{"age":30,"gender":"Male","edu":"Bachelor's","job":"IT Support","exp":2.0,"salary":50000.0},{"age":36,"gender":"Female","edu":"Bachelor's","job":"Recruiter","exp":9.0,"salary":60000.0},{"age":41,"gender":"Male","edu":"Master's","job":"Financial Manager","exp":13.0,"salary":140000.0},{"age":28,"gender":"Female","edu":"Bachelor's","job":"Social Media Specialist","exp":3.0,"salary":45000.0},{"age":37,"gender":"Female","edu":"Master's","job":"Software Manager","exp":11.0,"salary":110000.0},{"age":24,"gender":"Male","edu":"Bachelor's","job":"Junior Developer","exp":1.0,"salary":40000.0},{"age":43,"gender":"Female","edu":"PhD","job":"Senior Consultant","exp":15.0,"salary":140000.0},{"age":33,"gender":"Male","edu":"Master's","job":"Product Designer","exp":6.0,"salary":90000.0},{"age":50,"gender":"Male","edu":"Bachelor's","job":"CEO","exp":25.0,"salary":250000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Accountant","exp":4.0,"salary":55000.0},{"age":29,"gender":"Male","edu":"Master's","job":"Data Scientist","exp":3.0,"salary":75000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Marketing Specialist","exp":10.0,"salary":65000.0},{"age":46,"gender":"Male","edu":"PhD","job":"Senior Manager","exp":20.0,"salary":170000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Technical Writer","exp":2.0,"salary":45000.0},{"age":35,"gender":"Female","edu":"Bachelor's","job":"HR Generalist","exp":7.0,"salary":60000.0},{"age":42,"gender":"Male","edu":"Master's","job":"Project Engineer","exp":14.0,"salary":115000.0},{"age":26,"gender":"Female","edu":"Bachelor's","job":"Customer Success Rep","exp":1.0,"salary":40000.0},{"age":49,"gender":"Male","edu":"Bachelor's","job":"Sales Executive","exp":21.0,"salary":160000.0},{"age":34,"gender":"Female","edu":"Master's","job":"UX Designer","exp":5.0,"salary":80000.0},{"age":48,"gender":"Male","edu":"Master's","job":"Operations Director","exp":18.0,"salary":190000.0},{"age":30,"gender":"Male","edu":"Bachelor's","job":"Network Engineer","exp":3.0,"salary":60000.0},{"age":36,"gender":"Female","edu":"Bachelor's","job":"Administrative Assistant","exp":8.0,"salary":45000.0},{"age":41,"gender":"Male","edu":"Master's","job":"Strategy Consultant","exp":13.0,"salary":130000.0},{"age":28,"gender":"Female","edu":"Bachelor's","job":"Copywriter","exp":2.0,"salary":40000.0},{"age":32,"gender":"Male","edu":"Bachelor's","job":"Account Manager","exp":5.0,"salary":75000.0},{"age":45,"gender":"Female","edu":"Master's","job":"Director of Marketing","exp":16.0,"salary":180000.0},{"age":38,"gender":"Male","edu":"PhD","job":"Senior Scientist","exp":11.0,"salary":120000.0},{"age":25,"gender":"Male","edu":"Bachelor's","job":"Help Desk Analyst","exp":0.0,"salary":35000.0},{"age":51,"gender":"Female","edu":"Bachelor's","job":"Customer Service Manager","exp":22.0,"salary":130000.0},{"age":33,"gender":"Male","edu":"Master's","job":"Business Intelligence Analyst","exp":7.0,"salary":85000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Event Coordinator","exp":12.0,"salary":60000.0},{"age":47,"gender":"Male","edu":"Master's","job":"VP of Finance","exp":19.0,"salary":200000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Graphic Designer","exp":3.0,"salary":50000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Sales Manager","exp":9.0,"salary":95000.0},{"age":27,"gender":"Female","edu":"Master's","job":"UX Researcher","exp":2.0,"salary":65000.0},{"age":43,"gender":"Male","edu":"PhD","job":"Senior Engineer","exp":17.0,"salary":140000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Social Media Manager","exp":4.0,"salary":55000.0},{"age":35,"gender":"Male","edu":"Master's","job":"Product Manager","exp":7.0,"salary":105000.0},{"age":51,"gender":"Female","edu":"Master's","job":"Director of Operations","exp":23.0,"salary":170000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Marketing Analyst","exp":3.0,"salary":50000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"HR Manager","exp":12.0,"salary":80000.0},{"age":47,"gender":"Male","edu":"PhD","job":"Senior Data Scientist","exp":21.0,"salary":180000.0},{"age":26,"gender":"Male","edu":"Bachelor's","job":"Junior Accountant","exp":1.0,"salary":35000.0},{"age":38,"gender":"Female","edu":"Master's","job":"Digital Marketing Manager","exp":10.0,"salary":90000.0},{"age":46,"gender":"Male","edu":"Bachelor's","job":"IT Manager","exp":19.0,"salary":120000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Customer Service Representative","exp":5.0,"salary":45000.0},{"age":34,"gender":"Male","edu":"Master's","job":"Business Development Manager","exp":8.0,"salary":90000.0},{"age":49,"gender":"Female","edu":"Master's","job":"Senior Financial Analyst","exp":18.0,"salary":150000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Web Developer","exp":6.0,"salary":65000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Recruiter","exp":11.0,"salary":70000.0},{"age":45,"gender":"Male","edu":"PhD","job":"Research Director","exp":16.0,"salary":190000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Technical Support Specialist","exp":2.0,"salary":40000.0},{"age":42,"gender":"Female","edu":"Master's","job":"Creative Director","exp":14.0,"salary":120000.0},{"age":37,"gender":"Male","edu":"Bachelor's","job":"Project Manager","exp":10.0,"salary":95000.0},{"age":50,"gender":"Female","edu":"Bachelor's","job":"Operations Manager","exp":22.0,"salary":160000.0},{"age":32,"gender":"Male","edu":"Master's","job":"Senior Software Engineer","exp":6.0,"salary":100000.0},{"age":48,"gender":"Female","edu":"Master's","job":"Human Resources Director","exp":20.0,"salary":180000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Content Marketing Manager","exp":3.0,"salary":55000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Technical Recruiter","exp":8.0,"salary":70000.0},{"age":41,"gender":"Female","edu":"Master's","job":"Data Analyst","exp":13.0,"salary":80000.0},{"age":25,"gender":"Male","edu":"Bachelor's","job":"Sales Representative","exp":0.0,"salary":30000.0},{"age":52,"gender":"Male","edu":"PhD","job":"Chief Technology Officer","exp":24.0,"salary":250000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Designer","exp":2.0,"salary":40000.0},{"age":34,"gender":"Female","edu":"Master's","job":"Financial Advisor","exp":10.0,"salary":95000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Junior Account Manager","exp":2.0,"salary":45000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"HR Generalist","exp":15.0,"salary":80000.0},{"age":46,"gender":"Male","edu":"Master's","job":"Senior Project Manager","exp":21.0,"salary":135000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Marketing Coordinator","exp":6.0,"salary":55000.0},{"age":36,"gender":"Male","edu":"PhD","job":"Principal Scientist","exp":11.0,"salary":120000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Sales Associate","exp":3.0,"salary":40000.0},{"age":43,"gender":"Male","edu":"Bachelor's","job":"Supply Chain Manager","exp":18.0,"salary":105000.0},{"age":52,"gender":"Female","edu":"Master's","job":"Senior Marketing Manager","exp":25.0,"salary":170000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Business Analyst","exp":7.0,"salary":75000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Training Specialist","exp":12.0,"salary":65000.0},{"age":47,"gender":"Male","edu":"PhD","job":"Research Scientist","exp":22.0,"salary":160000.0},{"age":26,"gender":"Male","edu":"Bachelor's","job":"Junior Software Developer","exp":1.0,"salary":35000.0},{"age":38,"gender":"Female","edu":"Master's","job":"Public Relations Manager","exp":10.0,"salary":90000.0},{"age":45,"gender":"Male","edu":"Bachelor's","job":"Operations Analyst","exp":20.0,"salary":110000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Event Coordinator","exp":5.0,"salary":45000.0},{"age":35,"gender":"Male","edu":"Master's","job":"Product Marketing Manager","exp":8.0,"salary":95000.0},{"age":49,"gender":"Female","edu":"Master's","job":"Senior HR Manager","exp":19.0,"salary":150000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Web Developer","exp":5.0,"salary":50000.0},{"age":39,"gender":"Female","edu":"Master's","job":"Senior Project Coordinator","exp":13.0,"salary":80000.0},{"age":44,"gender":"Male","edu":"PhD","job":"Chief Data Officer","exp":16.0,"salary":220000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Digital Content Producer","exp":3.0,"salary":50000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"IT Support Specialist","exp":7.0,"salary":60000.0},{"age":41,"gender":"Female","edu":"Master's","job":"Senior Marketing Analyst","exp":14.0,"salary":100000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Customer Success Manager","exp":2.0,"salary":40000.0},{"age":42,"gender":"Female","edu":"Master's","job":"Senior Graphic Designer","exp":15.0,"salary":110000.0},{"age":37,"gender":"Male","edu":"Bachelor's","job":"Software Project Manager","exp":9.0,"salary":95000.0},{"age":50,"gender":"Female","edu":"Bachelor's","job":"Supply Chain Analyst","exp":22.0,"salary":130000.0},{"age":32,"gender":"Male","edu":"Master's","job":"Senior Business Analyst","exp":6.0,"salary":90000.0},{"age":23,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Analyst","exp":0.5,"salary":35000.0},{"age":31,"gender":"Male","edu":"Master's","job":"Senior Financial Analyst","exp":6.0,"salary":95000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Office Manager","exp":15.0,"salary":65000.0},{"age":48,"gender":"Male","edu":"PhD","job":"Principal Engineer","exp":20.0,"salary":170000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior HR Generalist","exp":3.0,"salary":45000.0},{"age":35,"gender":"Male","edu":"Master's","job":"Senior Product Manager","exp":10.0,"salary":120000.0},{"age":42,"gender":"Female","edu":"Bachelor's","job":"Sales Manager","exp":17.0,"salary":100000.0},{"age":53,"gender":"Male","edu":"Master's","job":"Director of Marketing","exp":25.0,"salary":180000.0},{"age":33,"gender":"Female","edu":"Bachelor's","job":"Junior Operations Analyst","exp":5.0,"salary":50000.0},{"age":38,"gender":"Male","edu":"Bachelor's","job":"Customer Service Manager","exp":11.0,"salary":80000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior Scientist","exp":16.0,"salary":140000.0},{"age":26,"gender":"Male","edu":"Bachelor's","job":"Junior Accountant","exp":2.0,"salary":40000.0},{"age":37,"gender":"Female","edu":"Master's","job":"Senior HR Generalist","exp":9.0,"salary":95000.0},{"age":45,"gender":"Male","edu":"Bachelor's","job":"Sales Operations Manager","exp":18.0,"salary":110000.0},{"age":32,"gender":"Female","edu":"Bachelor's","job":"Marketing Coordinator","exp":4.0,"salary":50000.0},{"age":34,"gender":"Male","edu":"Master's","job":"Senior Software Developer","exp":8.0,"salary":105000.0},{"age":50,"gender":"Female","edu":"Master's","job":"Director of Operations","exp":21.0,"salary":160000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Junior Web Designer","exp":3.0,"salary":45000.0},{"age":40,"gender":"Female","edu":"Master's","job":"Senior Training Specialist","exp":12.0,"salary":100000.0},{"age":47,"gender":"Male","edu":"PhD","job":"Senior Research Scientist","exp":22.0,"salary":160000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Junior Sales Representative","exp":1.0,"salary":35000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Administrative Assistant","exp":10.0,"salary":55000.0},{"age":46,"gender":"Male","edu":"Master's","job":"Senior Project Manager","exp":19.0,"salary":140000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Manager","exp":4.0,"salary":50000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Junior Data Analyst","exp":7.0,"salary":60000.0},{"age":43,"gender":"Female","edu":"Master's","job":"Senior Product Marketing Manager","exp":14.0,"salary":120000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Junior Business Analyst","exp":2.0,"salary":40000.0},{"age":41,"gender":"Female","edu":"Master's","job":"Senior Marketing Manager","exp":13.0,"salary":110000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Software Developer","exp":5.0,"salary":50000.0},{"age":47,"gender":"Male","edu":"Bachelor's","job":"Senior Sales Manager","exp":20.0,"salary":135000.0},{"age":25,"gender":"Female","edu":"Master's","job":"Junior Marketing Specialist","exp":1.5,"salary":40000.0},{"age":34,"gender":"Male","edu":"Bachelor's","job":"Senior Business Analyst","exp":8.0,"salary":90000.0},{"age":42,"gender":"Female","edu":"PhD","job":"Senior Data Scientist","exp":16.0,"salary":150000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Project Manager","exp":4.0,"salary":60000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Accountant","exp":10.0,"salary":80000.0},{"age":45,"gender":"Male","edu":"Master's","job":"Director of Sales","exp":19.0,"salary":175000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Recruiter","exp":3.0,"salary":45000.0},{"age":36,"gender":"Male","edu":"Master's","job":"Senior Business Development Manager","exp":11.0,"salary":120000.0},{"age":43,"gender":"Female","edu":"PhD","job":"Senior Product Designer","exp":18.0,"salary":140000.0},{"age":26,"gender":"Male","edu":"Bachelor's","job":"Junior Customer Support Specialist","exp":2.0,"salary":35000.0},{"age":37,"gender":"Female","edu":"Master's","job":"Senior Marketing Analyst","exp":9.0,"salary":95000.0},{"age":44,"gender":"Male","edu":"Bachelor's","job":"Senior IT Support Specialist","exp":14.0,"salary":110000.0},{"age":32,"gender":"Female","edu":"Bachelor's","job":"Junior Financial Analyst","exp":5.0,"salary":50000.0},{"age":33,"gender":"Male","edu":"Master's","job":"Senior Operations Manager","exp":7.0,"salary":115000.0},{"age":51,"gender":"Female","edu":"PhD","job":"Director of Human Resources","exp":23.0,"salary":185000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Junior Software Engineer","exp":2.0,"salary":40000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Senior Sales Representative","exp":12.0,"salary":90000.0},{"age":48,"gender":"Male","edu":"Master's","job":"Director of Product Management","exp":21.0,"salary":175000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior Copywriter","exp":3.0,"salary":45000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Marketing Coordinator","exp":7.0,"salary":80000.0},{"age":41,"gender":"Female","edu":"Master's","job":"Senior Human Resources Manager","exp":13.0,"salary":120000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Junior Business Development Associate","exp":1.5,"salary":35000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Senior Account Manager","exp":14.0,"salary":110000.0},{"age":46,"gender":"Male","edu":"PhD","job":"Senior Researcher","exp":18.0,"salary":150000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Junior HR Coordinator","exp":4.0,"salary":50000.0},{"age":34,"gender":"Male","edu":"Master's","job":"Senior Software Engineer","exp":9.0,"salary":105000.0},{"age":50,"gender":"Female","edu":"Master's","job":"Director of Finance","exp":20.0,"salary":180000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Junior Marketing Coordinator","exp":2.0,"salary":40000.0},{"age":43,"gender":"Male","edu":"Bachelor's","job":"Senior Project Manager","exp":16.0,"salary":140000.0},{"age":26,"gender":"Female","edu":"Master's","job":"Junior Data Scientist","exp":1.5,"salary":45000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Analyst","exp":7.0,"salary":85000.0},{"age":42,"gender":"Female","edu":"PhD","job":"Senior Marketing Manager","exp":18.0,"salary":140000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Accountant","exp":4.0,"salary":50000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Human Resources Coordinator","exp":10.0,"salary":80000.0},{"age":46,"gender":"Male","edu":"Master's","job":"Director of Operations","exp":20.0,"salary":170000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Sales Representative","exp":2.0,"salary":40000.0},{"age":37,"gender":"Male","edu":"Master's","job":"Senior Business Analyst","exp":9.0,"salary":105000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior UX Designer","exp":15.0,"salary":145000.0},{"age":27,"gender":"Male","edu":"Bachelor's","job":"Junior Product Manager","exp":2.0,"salary":40000.0},{"age":36,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Specialist","exp":8.0,"salary":85000.0},{"age":43,"gender":"Male","edu":"Bachelor's","job":"Senior IT Project Manager","exp":14.0,"salary":130000.0},{"age":33,"gender":"Female","edu":"Master's","job":"Senior Financial Analyst","exp":6.0,"salary":95000.0},{"age":34,"gender":"Male","edu":"Bachelor's","job":"Senior Quality Assurance Analyst","exp":9.0,"salary":100000.0},{"age":50,"gender":"Female","edu":"PhD","job":"Director of Sales and Marketing","exp":22.0,"salary":180000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Junior Operations Analyst","exp":1.5,"salary":35000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Senior Account Executive","exp":12.0,"salary":95000.0},{"age":47,"gender":"Male","edu":"Master's","job":"Director of Business Development","exp":19.0,"salary":170000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior Social Media Manager","exp":3.0,"salary":45000.0},{"age":34,"gender":"Male","edu":"Bachelor's","job":"Senior Product Manager","exp":7.0,"salary":95000.0},{"age":40,"gender":"Female","edu":"Master's","job":"Senior Human Resources Specialist","exp":13.0,"salary":120000.0},{"age":41,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Coordinator","exp":11.0,"salary":90000.0},{"age":45,"gender":"Male","edu":"PhD","job":"Senior Data Analyst","exp":17.0,"salary":155000.0},{"age":32,"gender":"Female","edu":"Bachelor's","job":"Junior Account Manager","exp":5.0,"salary":55000.0},{"age":35,"gender":"Male","edu":"Master's","job":"Senior Software Developer","exp":9.0,"salary":110000.0},{"age":49,"gender":"Female","edu":"Master's","job":"Director of Human Capital","exp":21.0,"salary":180000.0},{"age":30,"gender":"Male","edu":"Bachelor's","job":"Junior Advertising Coordinator","exp":3.0,"salary":45000.0},{"age":44,"gender":"Male","edu":"Bachelor's","job":"Senior Sales Manager","exp":16.0,"salary":130000.0},{"age":27,"gender":"Female","edu":"Master's","job":"Junior UX Designer","exp":1.5,"salary":45000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Accountant","exp":7.0,"salary":90000.0},{"age":41,"gender":"Female","edu":"PhD","job":"Senior Marketing Director","exp":17.0,"salary":160000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior HR Generalist","exp":4.0,"salary":50000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Senior Operations Manager","exp":10.0,"salary":120000.0},{"age":47,"gender":"Male","edu":"Master's","job":"Director of Finance","exp":20.0,"salary":170000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Coordinator","exp":2.0,"salary":40000.0},{"age":38,"gender":"Male","edu":"Master's","job":"Senior IT Consultant","exp":9.0,"salary":110000.0},{"age":45,"gender":"Female","edu":"PhD","job":"Senior Product Designer","exp":15.0,"salary":150000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Junior Business Development Associate","exp":2.0,"salary":40000.0},{"age":35,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Analyst","exp":8.0,"salary":85000.0},{"age":44,"gender":"Male","edu":"Bachelor's","job":"Senior Software Engineer","exp":14.0,"salary":130000.0},{"age":34,"gender":"Female","edu":"Master's","job":"Senior Financial Advisor","exp":6.0,"salary":100000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Project Coordinator","exp":9.0,"salary":95000.0},{"age":50,"gender":"Female","edu":"PhD","job":"Director of Operations","exp":22.0,"salary":180000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Junior Business Operations Analyst","exp":1.5,"salary":35000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Senior Sales Representative","exp":12.0,"salary":100000.0},{"age":48,"gender":"Male","edu":"Master's","job":"Director of Marketing","exp":19.0,"salary":170000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Junior Social Media Specialist","exp":3.0,"salary":45000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Senior Product Development Manager","exp":7.0,"salary":100000.0},{"age":42,"gender":"Female","edu":"Master's","job":"Senior Human Resources Manager","exp":13.0,"salary":140000.0},{"age":28,"gender":"Male","edu":"Bachelor's","job":"Junior Financial Analyst","exp":2.0,"salary":40000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Manager","exp":11.0,"salary":105000.0},{"age":46,"gender":"Male","edu":"PhD","job":"Senior Data Scientist","exp":18.0,"salary":160000.0},{"age":33,"gender":"Female","edu":"Bachelor's","job":"Junior Operations Manager","exp":5.0,"salary":70000.0},{"age":37,"gender":"Male","edu":"Master's","job":"Senior Software Architect","exp":9.0,"salary":120000.0},{"age":51,"gender":"Female","edu":"Master's","job":"Director of Human Resources","exp":21.0,"salary":190000.0},{"age":30,"gender":"Male","edu":"Bachelor's","job":"Junior Marketing Specialist","exp":3.0,"salary":45000.0},{"age":43,"gender":"Male","edu":"Bachelor's","job":"Senior Project Manager","exp":15.0,"salary":120000.0},{"age":27,"gender":"Female","edu":"Master's","job":"Junior Research Scientist","exp":1.5,"salary":50000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Analyst","exp":8.0,"salary":85000.0},{"age":42,"gender":"Female","edu":"PhD","job":"Senior Marketing Manager","exp":13.0,"salary":140000.0},{"age":32,"gender":"Male","edu":"Bachelor's","job":"Junior Sales Representative","exp":3.0,"salary":45000.0},{"age":37,"gender":"Female","edu":"Bachelor's","job":"Senior Financial Analyst","exp":9.0,"salary":100000.0},{"age":45,"gender":"Male","edu":"Master's","job":"Senior Software Developer","exp":16.0,"salary":140000.0},{"age":33,"gender":"Female","edu":"Bachelor's","job":"Junior Operations Analyst","exp":5.0,"salary":70000.0},{"age":39,"gender":"Male","edu":"Bachelor's","job":"Senior Marketing Specialist","exp":10.0,"salary":120000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior HR Manager","exp":18.0,"salary":160000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Junior Business Analyst","exp":1.5,"salary":40000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Product Manager","exp":10.0,"salary":120000.0},{"age":46,"gender":"Male","edu":"PhD","job":"Senior Data Analyst","exp":19.0,"salary":150000.0},{"age":34,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Analyst","exp":6.0,"salary":70000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Manager","exp":8.0,"salary":95000.0},{"age":49,"gender":"Female","edu":"Master's","job":"Director of Marketing","exp":21.0,"salary":180000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Financial Analyst","exp":3.0,"salary":50000.0},{"age":41,"gender":"Female","edu":"Bachelor's","job":"Senior Project Coordinator","exp":11.0,"salary":95000.0},{"age":47,"gender":"Male","edu":"Master's","job":"Director of Operations","exp":20.0,"salary":170000.0},{"age":29,"gender":"Male","edu":"Bachelor's","job":"Junior Business Operations Analyst","exp":1.5,"salary":350.0},{"age":37,"gender":"Female","edu":"Bachelor's","job":"Senior Financial Manager","exp":10.0,"salary":120000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Coordinator","exp":3.0,"salary":50000.0},{"age":42,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Manager","exp":12.0,"salary":110000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Sales Representative","exp":1.5,"salary":40000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Marketing Specialist","exp":8.0,"salary":95000.0},{"age":44,"gender":"Female","edu":"Master's","job":"Senior HR Specialist","exp":15.0,"salary":140000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Operations Manager","exp":4.0,"salary":60000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Coordinator","exp":9.0,"salary":110000.0},{"age":45,"gender":"Male","edu":"PhD","job":"Senior Data Engineer","exp":16.0,"salary":150000.0},{"age":32,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Manager","exp":4.0,"salary":60000.0},{"age":37,"gender":"Male","edu":"Bachelor's","job":"Senior Financial Analyst","exp":8.0,"salary":90000.0},{"age":47,"gender":"Female","edu":"Master's","job":"Director of Marketing","exp":20.0,"salary":180000.0},{"age":30,"gender":"Male","edu":"Bachelor's","job":"Junior Business Analyst","exp":2.0,"salary":40000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Project Manager","exp":9.0,"salary":120000.0},{"age":46,"gender":"Male","edu":"PhD","job":"Senior Data Analyst","exp":17.0,"salary":160000.0},{"age":34,"gender":"Female","edu":"Bachelor's","job":"Junior Financial Analyst","exp":5.0,"salary":70000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Product Manager","exp":8.0,"salary":95000.0},{"age":49,"gender":"Female","edu":"Master's","job":"Director of Operations","exp":21.0,"salary":180000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Operations Analyst","exp":3.0,"salary":50000.0},{"age":47,"gender":"Male","edu":"Master's","job":"Director of Marketing","exp":19.0,"salary":170000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Business Development Associate","exp":1.5,"salary":35000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Financial Manager","exp":9.0,"salary":100000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior Product Designer","exp":15.0,"salary":150000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Business Analyst","exp":4.0,"salary":60000.0},{"age":44,"gender":"Male","edu":"Bachelor's","job":"Senior Software Engineer","exp":13.0,"salary":130000.0},{"age":32,"gender":"Male","edu":"Bachelor's","job":"Junior Product Manager","exp":4.0,"salary":65000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Business Analyst","exp":10.0,"salary":110000.0},{"age":49,"gender":"Male","edu":"PhD","job":"Director of Operations","exp":21.0,"salary":180000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Specialist","exp":2.0,"salary":40000.0},{"age":35,"gender":"Male","edu":"Bachelor's","job":"Senior Business Development Manager","exp":7.0,"salary":90000.0},{"age":45,"gender":"Female","edu":"Master's","job":"Senior HR Manager","exp":14.0,"salary":140000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Financial Analyst","exp":4.0,"salary":60000.0},{"age":40,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Manager","exp":12.0,"salary":130000.0},{"age":44,"gender":"Male","edu":"PhD","job":"Senior Data Scientist","exp":16.0,"salary":160000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior Operations Coordinator","exp":2.0,"salary":40000.0},{"age":37,"gender":"Male","edu":"Bachelor's","job":"Senior Marketing Analyst","exp":9.0,"salary":100000.0},{"age":48,"gender":"Female","edu":"Master's","job":"Director of HR","exp":20.0,"salary":180000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Project Manager","exp":3.0,"salary":55000.0},{"age":38,"gender":"Female","edu":"Bachelor's","job":"Senior Operations Coordinator","exp":9.0,"salary":120000.0},{"age":33,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Manager","exp":5.0,"salary":70000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Business Analyst","exp":8.0,"salary":95000.0},{"age":42,"gender":"Female","edu":"Bachelor's","job":"Senior Project Manager","exp":12.0,"salary":120000.0},{"age":34,"gender":"Female","edu":"Master's","job":"Senior Financial Advisor","exp":6.0,"salary":80000.0},{"age":30,"gender":"Female","edu":"Bachelor's","job":"Junior HR Coordinator","exp":2.0,"salary":40000.0},{"age":37,"gender":"Male","edu":"Bachelor's","job":"Senior Business Development Manager","exp":10.0,"salary":120000.0},{"age":45,"gender":"Female","edu":"Master's","job":"Senior Marketing Manager","exp":16.0,"salary":160000.0},{"age":32,"gender":"Male","edu":"Bachelor's","job":"Junior Financial Advisor","exp":4.0,"salary":65000.0},{"age":39,"gender":"Female","edu":"Bachelor's","job":"Senior Project Manager","exp":12.0,"salary":130000.0},{"age":47,"gender":"Male","edu":"PhD","job":"Director of Engineering","exp":20.0,"salary":180000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Marketing Analyst","exp":2.0,"salary":40000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Manager","exp":9.0,"salary":100000.0},{"age":43,"gender":"Female","edu":"PhD","job":"Senior Data Scientist","exp":15.0,"salary":150000.0},{"age":32,"gender":"Male","edu":"Bachelor's","job":"Junior Marketing Coordinator","exp":3.0,"salary":55000.0},{"age":48,"gender":"Male","edu":"Master's","job":"Director of Marketing","exp":21.0,"salary":180000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Junior Business Development Associate","exp":3.0,"salary":50000.0},{"age":40,"gender":"Male","edu":"Bachelor's","job":"Senior Financial Analyst","exp":12.0,"salary":130000.0},{"age":45,"gender":"Female","edu":"PhD","job":"Senior UX Designer","exp":16.0,"salary":160000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Product Manager","exp":4.0,"salary":60000.0},{"age":36,"gender":"Female","edu":"Bachelor's","job":"Senior Marketing Manager","exp":8.0,"salary":95000.0},{"age":47,"gender":"Male","edu":"Master's","job":"Director of Operations","exp":19.0,"salary":170000.0},{"age":29,"gender":"Female","edu":"Bachelor's","job":"Junior Project Manager","exp":2.0,"salary":40000.0},{"age":34,"gender":"Male","edu":"Bachelor's","job":"Senior Operations Coordinator","exp":7.0,"salary":90000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior Business Analyst","exp":15.0,"salary":150000.0},{"age":33,"gender":"Male","edu":"Bachelor's","job":"Junior Marketing Specialist","exp":5.0,"salary":70000.0},{"age":35,"gender":"Female","edu":"Bachelor's","job":"Senior Financial Manager","exp":8.0,"salary":90000.0},{"age":43,"gender":"Male","edu":"Master's","job":"Director of Marketing","exp":18.0,"salary":170000.0},{"age":31,"gender":"Female","edu":"Bachelor's","job":"Junior Financial Analyst","exp":3.0,"salary":50000.0},{"age":41,"gender":"Male","edu":"Bachelor's","job":"Senior Product Manager","exp":14.0,"salary":150000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior Data Engineer","exp":16.0,"salary":160000.0},{"age":45,"gender":"Male","edu":"Master's","job":"Director of Engineering","exp":19.0,"salary":180000.0},{"age":28,"gender":"Female","edu":"Bachelor's","job":"Junior Operations Manager","exp":1.0,"salary":35000.0},{"age":36,"gender":"Male","edu":"Bachelor's","job":"Senior Business Development Manager","exp":8.0,"salary":110000.0},{"age":44,"gender":"Female","edu":"PhD","job":"Senior Data Scientist","exp":16.0,"salary":160000.0},{"age":31,"gender":"Male","edu":"Bachelor's","job":"Junior Marketing Coordinator","exp":3.0,"salary":55000.0},{"age":43,"gender":"Male","edu":"Master's","job":"Director of Operations","exp":19.0,"salary":170000.0}];
+
+const fmtMoney = v => '$' + Math.round(v).toLocaleString();
+const fmtMoneyShort = v => '$' + (v/1000).toFixed(0) + 'k';
+
+function mean(arr){ return arr.reduce((a,b)=>a+b,0) / (arr.length || 1); }
+function median(arr){
+  const s = [...arr].sort((a,b)=>a-b);
+  const n = s.length; if(!n) return 0;
+  const mid = Math.floor(n/2);
+  return n % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+function pearson(xs, ys){
+  const n = xs.length;
+  const sx = xs.reduce((a,b)=>a+b,0), sy = ys.reduce((a,b)=>a+b,0);
+  const sxy = xs.reduce((a,x,i)=>a+x*ys[i],0);
+  const sx2 = xs.reduce((a,x)=>a+x*x,0), sy2 = ys.reduce((a,y)=>a+y*y,0);
+  const num = n*sxy - sx*sy;
+  const den = Math.sqrt((n*sx2 - sx*sx) * (n*sy2 - sy*sy));
+  return den === 0 ? 0 : num/den;
+}
+
+const GENDER_COLOR = { Male: '#3fb6a0', Female: '#e2725b' };
+
+let charts = {};
+function destroyAll(){ Object.values(charts).forEach(c => c && c.destroy()); charts = {}; }
+
+function getFiltered(){
+  const g = document.getElementById('fGender').value;
+  const e = document.getElementById('fEdu').value;
+  return RAW.filter(r =>
+    (g === 'all' || r.gender === g) &&
+    (e === 'all' || r.edu === e)
+  );
+}
+
+function renderLedger(rows){
+  const salaries = rows.map(r => r.salary);
+  const avg = mean(salaries), med = median(salaries);
+  const male = rows.filter(r=>r.gender==='Male').map(r=>r.salary);
+  const female = rows.filter(r=>r.gender==='Female').map(r=>r.salary);
+  const maleAvg = mean(male), femaleAvg = mean(female);
+  const gap = maleAvg - femaleAvg;
+  const gapPct = maleAvg ? (gap/maleAvg*100) : 0;
+  const corrExp = pearson(rows.map(r=>r.exp), rows.map(r=>r.salary));
+
+  const items = [
+    ['Total employees', rows.length.toLocaleString(), ''],
+    ['Average salary', fmtMoney(avg), 'gold'],
+    ['Median salary', fmtMoney(med), ''],
+    ['Male avg. salary', male.length ? fmtMoney(maleAvg) : '—', 'teal'],
+    ['Female avg. salary', female.length ? fmtMoney(femaleAvg) : '—', 'coral'],
+    ['Gender pay gap', (male.length && female.length) ? fmtMoney(gap) + '  (' + gapPct.toFixed(1) + '%)' : '—', ''],
+    ['Experience ↔ salary correlation (r)', corrExp.toFixed(2), '']
+  ];
+
+  document.getElementById('ledger').innerHTML = items.map(([label,val,cls]) => `
+    <div class="ledger-row">
+      <span class="ledger-label">${label}</span>
+      <span class="ledger-fill"></span>
+      <span class="ledger-value ${cls}">${val}</span>
+    </div>`).join('');
+}
+
+function renderHistogram(rows){
+  const salaries = rows.map(r=>r.salary).sort((a,b)=>a-b);
+  const binCount = 12;
+  const min = Math.min(...salaries, 0), max = Math.max(...salaries, 1);
+  const width = (max - min) / binCount || 1;
+  const bins = new Array(binCount).fill(0);
+  salaries.forEach(s => {
+    let idx = Math.floor((s - min) / width);
+    if(idx >= binCount) idx = binCount - 1;
+    if(idx < 0) idx = 0;
+    bins[idx]++;
+  });
+  const labels = bins.map((_,i) => fmtMoneyShort(min + i*width));
+
+  charts.hist = new Chart(document.getElementById('chartHist'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Employees', data: bins, backgroundColor: '#cfa435', borderRadius: 3, maxBarThickness: 28 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip:{ callbacks:{ title: (items)=>'~'+items[0].label } } },
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:'#8b95a3', font:{size:10}, maxRotation:45, autoSkip:false } },
+        y: { grid:{ color:'#242c37' }, ticks:{ color:'#8b95a3', precision:0 } }
+      }
+    }
+  });
+}
+
+function renderGender(rows){
+  const male = rows.filter(r=>r.gender==='Male').map(r=>r.salary);
+  const female = rows.filter(r=>r.gender==='Female').map(r=>r.salary);
+  charts.gender = new Chart(document.getElementById('chartGender'), {
+    type: 'bar',
+    data: {
+      labels: ['Male','Female'],
+      datasets: [{
+        data: [mean(male)||0, mean(female)||0],
+        backgroundColor: ['#3fb6a0','#e2725b'],
+        borderRadius: 4, maxBarThickness: 70
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c => fmtMoney(c.raw) } } },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ color:'#8b95a3' } },
+        y:{ grid:{color:'#242c37'}, ticks:{ color:'#8b95a3', callback:v=>fmtMoneyShort(v) } }
+      }
+    }
+  });
+}
+
+function renderEdu(rows){
+  const levels = ["Bachelor's","Master's","PhD"];
+  const avgs = levels.map(l => mean(rows.filter(r=>r.edu===l).map(r=>r.salary)) || 0);
+  charts.edu = new Chart(document.getElementById('chartEdu'), {
+    type:'bar',
+    data:{ labels: levels, datasets:[{ data: avgs, backgroundColor:'#cfa435', borderRadius:4, maxBarThickness:70 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>fmtMoney(c.raw) } } },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ color:'#8b95a3' } },
+        y:{ grid:{color:'#242c37'}, ticks:{ color:'#8b95a3', callback:v=>fmtMoneyShort(v) } }
+      }
+    }
+  });
+}
+
+function renderCorr(rows){
+  const ages = rows.map(r=>r.age), exps = rows.map(r=>r.exp), sals = rows.map(r=>r.salary);
+  const vars = ['Age','Experience','Salary'];
+  const data = [ages, exps, sals];
+  const matrix = [];
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++) matrix.push({ x: vars[j], y: vars[i], v: i===j ? 1 : pearson(data[i], data[j]) });
+
+  charts.corr = new Chart(document.getElementById('chartCorr'), {
+    type:'bar',
+    data:{
+      labels: vars,
+      datasets: vars.map((v,i) => ({
+        label: v,
+        data: vars.map((_,j) => matrix.find(m=>m.y===v && m.x===vars[j]).v),
+        backgroundColor: '#cfa435',
+        borderRadius: 3
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, position:'top', labels:{ color:'#8b95a3', font:{size:11} } },
+        tooltip:{ callbacks:{ label:c => c.dataset.label + ' × ' + c.label + ': r=' + c.raw.toFixed(2) } }
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{ color:'#8b95a3' } },
+        y:{ min:-1, max:1, grid:{color:'#242c37'}, ticks:{ color:'#8b95a3' } }
+      }
+    }
+  });
+}
+
+function scatterOptions(xLabel){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => `${xLabel}: ${c.parsed.x}, Salary: ${fmtMoney(c.parsed.y)}` } } },
+    scales:{
+      x:{ title:{ display:true, text:xLabel, color:'#8b95a3', font:{size:11} }, grid:{color:'#242c37'}, ticks:{ color:'#8b95a3' } },
+      y:{ title:{ display:true, text:'Salary', color:'#8b95a3', font:{size:11} }, grid:{color:'#242c37'}, ticks:{ color:'#8b95a3', callback:v=>fmtMoneyShort(v) } }
+    }
+  };
+}
+
+function renderExpScatter(rows){
+  charts.expScatter = new Chart(document.getElementById('chartExpScatter'), {
+    type:'scatter',
+    data:{ datasets:[{
+      data: rows.map(r => ({x:r.exp, y:r.salary})),
+      backgroundColor: rows.map(r => GENDER_COLOR[r.gender] || '#8b95a3'),
+      pointRadius: 4, pointHoverRadius: 6
+    }]},
+    options: scatterOptions('Years of experience')
+  });
+}
+
+function renderAgeScatter(rows){
+  charts.ageScatter = new Chart(document.getElementById('chartAgeScatter'), {
+    type:'scatter',
+    data:{ datasets:[{
+      data: rows.map(r => ({x:r.age, y:r.salary})),
+      backgroundColor: rows.map(r => GENDER_COLOR[r.gender] || '#8b95a3'),
+      pointRadius: 4, pointHoverRadius: 6
+    }]},
+    options: scatterOptions('Age')
+  });
+}
+
+function renderTopJobs(rows){
+  const byJob = {};
+  rows.forEach(r => {
+    if(!byJob[r.job]) byJob[r.job] = [];
+    byJob[r.job].push(r.salary);
+  });
+  const top = Object.entries(byJob)
+    .filter(([,arr]) => arr.length >= 2)
+    .map(([job,arr]) => ({ job, avg: mean(arr), count: arr.length }))
+    .sort((a,b) => b.avg - a.avg)
+    .slice(0,15)
+    .reverse();
+
+  charts.topJobs = new Chart(document.getElementById('chartTopJobs'), {
+    type:'bar',
+    data:{
+      labels: top.map(t=>t.job),
+      datasets:[{ data: top.map(t=>t.avg), backgroundColor:'#cfa435', borderRadius:3 }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        label: c => fmtMoney(c.raw),
+        afterLabel: c => `n = ${top[c.dataIndex].count}`
+      } } },
+      scales:{
+        x:{ grid:{color:'#242c37'}, ticks:{ color:'#8b95a3', callback:v=>fmtMoneyShort(v) } },
+        y:{ grid:{display:false}, ticks:{ color:'#8b95a3', font:{size:11} } }
+      }
+    }
+  });
+}
+
+function renderAll(){
+  destroyAll();
+  const rows = getFiltered();
+  document.getElementById('footCount').textContent = rows.length.toLocaleString() + ' employees shown';
+  renderLedger(rows);
+  renderHistogram(rows);
+  renderGender(rows);
+  renderEdu(rows);
+  renderCorr(rows);
+  renderExpScatter(rows);
+  renderAgeScatter(rows);
+  renderTopJobs(rows);
+}
+
+document.getElementById('fGender').addEventListener('change', renderAll);
+document.getElementById('fEdu').addEventListener('change', renderAll);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('fGender').value = 'all';
+  document.getElementById('fEdu').value = 'all';
+  renderAll();
+});
+
+renderAll();
+</script>
+</body>
+</html>
